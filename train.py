@@ -97,7 +97,7 @@ def main():
     parser.add_argument('-contr', '--contractive', type=float, help='contractive lambda')
     parser.add_argument('--noise', type=str, help='noise type: gs for Gaussian noise, sp for salt-and-pepper or mn for masking noise')
     parser.add_argument('-o', '--output', type=str, help='path to the output doc codes file')
-    parser.add_argument("-gpu", "--gpu", type = str, required = True, help = "select a gpu")
+    parser.add_argument("-gpu", "--gpu", type = str, required = True, help = "select gpus")
     args = parser.parse_args()
 
     if args.noise and not args.noise in ['gs', 'sp', 'mn']:

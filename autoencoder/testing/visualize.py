@@ -1,3 +1,4 @@
+#coding:utf8
 '''
 Created on Dec, 2016
 
@@ -158,6 +159,7 @@ def visualize_pca_2d(doc_codes, doc_labels, classes_to_visual, save_file):
         codes, labels = doc_codes, doc_labels
 
     X = np.r_[list(codes)]
+    #降到3维
     X = PCA(n_components=3).fit_transform(X)
     plt.figure(figsize=(10, 10), facecolor='white')
 
@@ -174,7 +176,7 @@ def visualize_pca_2d(doc_codes, doc_labels, classes_to_visual, save_file):
     # plt.ylabel('PC %s' % y_pc)
     legend = plt.legend(loc='upper right', shadow=True)
     # plt.savefig(save_file)
-    plt.savefig(save_file, format='eps', dpi=2000)
+    plt.savefig(save_file, format='png', dpi=2000)
     plt.show()
 
 def visualize_pca_3d(doc_codes, doc_labels, classes_to_visual, save_file, maker_size=None, opaque=None):

@@ -53,6 +53,120 @@ def weighted_binary_crossentropy(feature_weights):
     return loss
 
 
+class KCompetitive2(Layer):
+    def __init__(self, topk, ctype, **kwargs):
+        self.topk = topk
+        self.ctype = ctype
+        self.uses_learning_phase = True
+        self.supports_masking = True
+        super(KCompetitive2, self).__init__(**kwargs)
+    def call(self, x):
+        return self.k_comp_tanh(x, self.topk)
+        
+    def get_config(self):
+        config = {'topk': self.topk, 'ctype': self.ctype}
+        base_config = super(KCompetitive2, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+    def k_comp_tanh(self, x, topk, factor=6.26):
+        print 'run k_comp_tanh'
+        dim = int(x.get_shape()[1])
+        # batch_size = tf.to_float(tf.shape(x)[0])
+        if topk > dim:
+            warnings.warn('Warning: topk should not be larger than dim: %s, found: %s, using %s' % (dim, topk, dim))
+            topk = dim
+
+        #x中负单元变为0 复制给P
+        #x中正单元变为0 复制给N
+        P = (x + tf.abs(x)) / 2
+        N = (x - tf.abs(x)) / 2
+
+        """
+        返回P中每行最大的topk/2个值的矩阵和下标, 例如：
+                    
+        >>> input = tf.constant(np.random.rand(3, 4), tf.float32)
+        >>> sess.run(input)
+        array([[ 0.1788471 ,  0.42925367,  0.62012243,  0.22477686],
+               [ 0.82950139,  0.71171701,  0.97798854,  0.87934297],
+               [ 0.53212744,  0.91467142,  0.72761744,  0.46269524]], dtype=float32)
+        >>> output = tf.nn.top_k(input, 2)
+        >>> sess.run(output)
+        TopKV2(values=array([[ 0.62012243,  0.42925367],
+               [ 0.97798854,  0.87934297],
+               [ 0.91467142,  0.72761744]], dtype=float32), indices=array([[2, 1],
+               [2, 3],
+               [1, 2]], dtype=int32))
+        """
+
+        #values矩阵[ batchsize, topk / 2 ]
+        #indices矩阵[ batchsize, topk / 2 ]
+        values, indices = tf.nn.top_k(P, topk / 2) # indices will be [[0, 1], [2, 1]], values will be [[6., 2.], [5., 4.]]
+
+        # We need to create full indices like [[0, 0], [0, 1], [1, 2], [1, 1]]
+        #tf.shape(indices)[0] : 行数，就是batchsize
+        #expand_dims 之后，变成（batchsize, 1）的tensor
+        my_range = tf.expand_dims(tf.range(0, tf.shape(indices)[0]), 1)  # will be [[0], [1]]
+
+        #tile平铺复制,行数不变，列复制topk / 2份
+        my_range_repeated = tf.tile(my_range, [1, topk / 2])  # will be [[0, 0], [1, 1]]
+
+        #按照某一维度堆叠，变成 [batchsize , (topk / 2) , 2] 的矩阵
+        """
+        >>> sess.run(full_indices) 
+        array([[[0, 1],
+                [0, 0],
+                [0, 4]],
+        
+               [[1, 2],
+                [1, 0],
+                [1, 3]],
+        
+               [[2, 4],
+                [2, 5],
+                [2, 0]],
+        """
+        full_indices = tf.stack([my_range_repeated, indices], axis=2) # change shapes to [N, k, 1] and [N, k, 1], to concatenate into [N, k, 2]
+
+        #变成 [ batchsize * (topk / 2), 2 ] 的矩阵
+        full_indices = tf.reshape(full_indices, [-1, 2])
+
+        #
+        """
+        将每一行中 topk / 2 个最大元素以外的元素置为0
+        """
+        P_reset = tf.sparse_to_dense(full_indices, tf.shape(x), tf.reshape(values, [-1]), default_value=0., validate_indices=False)
+
+
+        """
+        处理负数部分
+        """
+        values2, indices2 = tf.nn.top_k(-N, topk - topk / 2)
+        my_range = tf.expand_dims(tf.range(0, tf.shape(indices2)[0]), 1)
+        my_range_repeated = tf.tile(my_range, [1, topk - topk / 2])
+        full_indices2 = tf.stack([my_range_repeated, indices2], axis = 2)
+        full_indices2 = tf.reshape(full_indices2, [-1, 2])
+        N_reset = tf.sparse_to_dense(full_indices2, tf.shape(x), tf.reshape(values2, [-1]), default_value=0., validate_indices=False)
+
+
+        # 1)
+        # res = P_reset - N_reset
+        # tmp = 1 * batch_size * tf.reduce_sum(x - res, 1, keep_dims=True) / topk
+
+        # P_reset = tf.sparse_to_dense(full_indices, tf.shape(x), tf.reshape(tf.add(values, tf.abs(tmp)), [-1]), default_value=0., validate_indices=False)
+        # N_reset = tf.sparse_to_dense(full_indices2, tf.shape(x), tf.reshape(tf.add(values2, tf.abs(tmp)), [-1]), default_value=0., validate_indices=False)
+
+        # 2)
+        # factor = 0.
+        factor = 2. / topk
+        P_tmp = factor * tf.reduce_sum(P - P_reset, 1, keep_dims=True) # 6.26
+        N_tmp = factor * tf.reduce_sum(-N - N_reset, 1, keep_dims=True)
+        P_reset = tf.sparse_to_dense(full_indices, tf.shape(x), tf.reshape(tf.add(values, P_tmp), [-1]), default_value=0., validate_indices=False)
+        N_reset = tf.sparse_to_dense(full_indices2, tf.shape(x), tf.reshape(tf.add(values2, N_tmp), [-1]), default_value=0., validate_indices=False)
+
+        res = P_reset - N_reset
+
+        return res
+
 class KCompetitive(Layer):
     '''Applies K-Competitive layer.
 

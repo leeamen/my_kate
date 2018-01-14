@@ -1,17 +1,23 @@
+#coding:utf8
+
 '''
 Created on Nov, 2016
 
 @author: hugo
 
 '''
+
 from __future__ import absolute_import
 from keras.layers import Input, Dense
 from keras.models import Model
 from keras.optimizers import Adadelta
 from keras.models import load_model as load_keras_model
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, LambdaCallback
+import keras
+import numpy as np
+import keras.backend as K
 
-from ..utils.keras_utils import Dense_tied, KCompetitive, contractive_loss, CustomModelCheckpoint
+from ..utils.keras_utils import Dense_tied, KCompetitive, KCompetitive2, contractive_loss, CustomModelCheckpoint
 
 
 class AutoEncoder(object):
@@ -49,6 +55,7 @@ class AutoEncoder(object):
         if self.comp_topk:
             print 'add k-competitive layer'
             encoded = KCompetitive(self.comp_topk, self.ctype)(encoded)
+            encoded_for_save = KCompetitive2(self.comp_topk, self.ctype)(encoded)
 
         # "decoded" is the lossy reconstruction of the input
         # add non-negativity contraint to ensure probabilistic interpretations
@@ -59,6 +66,7 @@ class AutoEncoder(object):
 
         # this model maps an input to its encoded representation
         self.encoder = Model(outputs=encoded, inputs=input_layer)
+        self.encoder_for_save = Model(outputs = encoded_for_save, inputs = input_layer)
 
         # create a placeholder for an encoded input
         encoded_input = Input(shape=(self.dim,))
@@ -78,15 +86,38 @@ class AutoEncoder(object):
             print 'Using binary crossentropy'
             self.autoencoder.compile(optimizer=optimizer, loss='binary_crossentropy') # kld, binary_crossentropy, mse
 
+        #
+        def save_encoded_z(batch, logs):
+            if batch > 4:
+                return
+            filename = "./encoded_z/encoded_z_" + str(batch + 1) + "_"
+            z_after = self.encoder_for_save.predict(train_X[0][batch_size * batch: batch_size * (batch + 1), :])
+            z_before = self.encoder.predict(train_X[0][batch_size * batch: batch_size * (batch + 1), :])
+            
+            np.savetxt(filename + "before.txt", z_before, delimiter = ",", fmt = "%.6f")
+            np.savetxt(filename + "after.txt", z_after, delimiter = ",", fmt = "%.6f")
+            print("\n保存文件:{}".format(filename))
+
+        class SaveZCallback(keras.callbacks.Callback):
+            def on_batch_begin(self, batch, logs = {}):
+                pass
+            def on_batch_end(self, batch, logs = {}):
+                save_encoded_z(batch, logs)
+
+        save_z_callback = SaveZCallback()
+
         self.autoencoder.fit(train_X[0], train_X[1],
                         epochs=nb_epoch,
                         batch_size=batch_size,
                         shuffle=True,
                         validation_data=(val_X[0], val_X[1]),
+                        #,LambdaCallback(on_batch_begin = lambda batch,logs: print("batch number:%d"%(batch)), on_batch_end = save_encoded_z)
+                        #,LambdaCallback(on_batch_end = lambda batch, logs: print(batch))
                         callbacks=[
                                     ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.01),
                                     EarlyStopping(monitor='val_loss', min_delta=1e-5, patience=5, verbose=1, mode='auto'),
-                                    CustomModelCheckpoint(self.encoder, self.save_model, monitor='val_loss', save_best_only=True, mode='auto')
+                                    CustomModelCheckpoint(self.encoder, self.save_model, monitor='val_loss', save_best_only=True, mode='auto'),
+                                    save_z_callback
                         ]
                         )
 

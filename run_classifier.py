@@ -14,6 +14,7 @@ from sklearn.model_selection import ShuffleSplit
 
 from autoencoder.testing.classifier import multiclass_classifier, multilabel_classifier
 from autoencoder.utils.io_utils import load_json, load_pickle
+import os
 
 def main():
     parser = argparse.ArgumentParser()
@@ -26,8 +27,10 @@ def main():
     parser.add_argument('-bs', '--batch_size', type=int, default=100, help='batch size (default 100)')
     parser.add_argument('-cv', '--cross_validation', type=int, help='k-fold cross validation')
     parser.add_argument('-mlc', '--multilabel_clf', action='store_true', help='multilabel classification flag')
+    parser.add_argument("-gpu", "--gpu", type = str, required = True, help = "select gpus")
 
     args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # autoencoder
     train_doc_codes = load_json(args.train_doc_codes)

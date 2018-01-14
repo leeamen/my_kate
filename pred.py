@@ -1,3 +1,4 @@
+#coding:utf8
 '''
 Created on Nov, 2016
 
@@ -16,7 +17,6 @@ from autoencoder.utils.io_utils import dump_json, write_file
 from autoencoder.testing.visualize import word_cloud
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "7"
 
 def calc_pairwise_cosine(model):
     weights = model.get_weights()[0]
@@ -29,6 +29,7 @@ def calc_pairwise_cosine(model):
 
     return np.mean(score), np.std(score)
 
+#mscd
 def calc_pairwise_dev(model):
     # the average squared deviation from 0 (90 degree)
     weights = model.get_weights()[0]
@@ -126,7 +127,7 @@ def test(args):
 
     if args.sample_words:
         revocab = revdict(vocab)
-        queries = ['weapon', 'christian', 'compani', 'israel', 'law', 'hockey', 'comput', 'space']
+        queries = ['weapon', 'christian', 'companies', 'israel', 'law', 'hockey', 'computer', 'space'] #computers, computer, companies, company
         words = []
         for each in queries:
             words.append(get_similar_words(ae, vocab[each], revocab, topn=11))
@@ -163,7 +164,9 @@ def main():
     parser.add_argument('-tw', '--translate_words', action='store_true', help='translate words flag')
     parser.add_argument('-cd', '--calc_distinct', action='store_true', help='calc average pairwise angle')
     parser.add_argument('-lm', '--load_model', type=str, required=True, help='path to the trained model file')
+    parser.add_argument("-gpu", "--gpu", type = str, required = True, help = "select gpus")
     args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     test(args)
 

@@ -20,22 +20,22 @@ def main():
 
     cmd = args.cmd.lower()
 
-    # classes_to_visual = ["rec.sport.hockey", "comp.graphics", "sci.crypt", \
-    #                         "soc.religion.christian", "talk.politics.mideast", \
-    #                         "talk.politics.guns"]
+    classes_to_visual = ["rec.sport.hockey", "comp.graphics", "sci.crypt", \
+                             "soc.religion.christian", "talk.politics.mideast", \
+                             "talk.politics.guns"]
 
     # classes_to_visual = ['comp.graphics', 'comp.os.ms-windows.misc', 'comp.sys.ibm.pc.hardware',
                         # 'comp.sys.mac.hardware', 'comp.windows.x']
     # classes_to_visual = ['alt.atheism', 'comp.graphics', 'comp.os.ms-windows.misc', 'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware', 'comp.windows.x', 'misc.forsale', 'rec.autos', 'rec.motorcycles', 'rec.sport.baseball', 'rec.sport.hockey', 'sci.crypt', 'sci.electronics', 'sci.med', 'sci.space', 'soc.religion.christian', 'talk.politics.guns', 'talk.politics.mideast', 'talk.politics.misc', 'talk.religion.misc']
 
     doc_codes = load_json(args.doc_codes_file)
-    # doc_labels = load_json(args.doc_labels_file)
+    doc_labels = load_json(args.doc_labels_file)
 
     # 20news
-    # if cmd == 'pca':
-    #     visualize_pca_2d(doc_codes, doc_labels, classes_to_visual, args.output)
-    # elif cmd == 'tsne':
-    #     plot_tsne(doc_codes, doc_labels, classes_to_visual, args.output)
+    if cmd == 'pca':
+        visualize_pca_2d(doc_codes, doc_labels, classes_to_visual, args.output)
+    elif cmd == 'tsne':
+        plot_tsne(doc_codes, doc_labels, classes_to_visual, args.output)
 
     # # 8k
     # classes_to_visual = ["1", "2", "3", "4", "5", "7", "8"]
@@ -47,6 +47,7 @@ def main():
     # for k in doc_labels:
     #     doc_labels[k] = ''.join([y for y in list(doc_labels[k]) if y.isdigit()])
 
+    exit()
 
     # bank_topic
     import numpy as np
