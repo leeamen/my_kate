@@ -9,7 +9,7 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from sklearn.metrics import f1_score, confusion_matrix, classification_report
+from sklearn.metrics import f1_score, accuracy_score
 
 def softmax_network(input_size, n_class):
     model = Sequential()
